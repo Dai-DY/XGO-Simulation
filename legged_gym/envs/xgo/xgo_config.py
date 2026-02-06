@@ -105,6 +105,10 @@ class xgoCfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
+            orientation = -0.2
+            lin_vel_z = -0.5
+            # ang_vel_xy = -0.1
+            # # base_height = -1.0
 
 
 
