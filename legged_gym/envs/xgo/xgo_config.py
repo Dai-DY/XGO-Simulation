@@ -100,16 +100,15 @@ class xgoCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             torques = -0.2
             dof_pos_limits = -1.0
-            feet_air_time = 3
-            action_rate = -0.12
+            feet_air_time = 3.0
+            action_rate = -0.3 #-0.12
             dof_acc = -2.5e-7
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
             orientation = -0.2
             lin_vel_z = -0.5
-            # ang_vel_xy = -0.1
-            # # base_height = -1.0
-
+            feet_air_time_variance = 0.5
+            foot_clearance = -0.2
 
 
 class xgoCfgPPO( LeggedRobotCfgPPO ):

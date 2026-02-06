@@ -110,6 +110,7 @@ class LeggedRobot(BaseTask):
         """
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         self.episode_length_buf += 1
         self.common_step_counter += 1
@@ -496,6 +497,11 @@ class LeggedRobot(BaseTask):
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.base_quat = self.root_states[:, 3:7]
+        
+        # Access rigid body states for foot position tracking
+        rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
+        self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state).view(self.num_envs, -1, 13)
 
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
 
@@ -515,6 +521,7 @@ class LeggedRobot(BaseTask):
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,) # TODO change this
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.last_feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
@@ -889,11 +896,46 @@ class LeggedRobot(BaseTask):
         self.last_contacts = contact
         first_contact = (self.feet_air_time > 0.) * contact_filt
         self.feet_air_time += self.dt
+        
+        # update last feet air time
+        self.last_feet_air_time = torch.where(first_contact, self.feet_air_time, self.last_feet_air_time)
+        
         rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
         rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
         self.feet_air_time *= ~contact_filt
         return rew_airTime
     
+    def _reward_feet_air_time_variance(self):
+        # Penalize variance of air time (encourage symmetry)
+        return torch.exp(-torch.var(self.last_feet_air_time, dim=1)/0.005)
+
+    def _reward_foot_clearance(self):
+        # Reward foot height during swing phase
+        # Get foot positions in world frame
+        foot_pos = self.rigid_body_states[:, self.feet_indices, 0:3]
+        
+        # Calculate height above ground (assuming flat ground at z=0 for now or use relative height if terrain is complex)
+        # Note: self.root_states[:, 2] is base height, but we want absolute foot height or relative to base
+        # Here we use absolute z height. If terrain is not flat, we should subtract terrain height.
+        foot_height = foot_pos[:, :, 2]
+        
+        # Only reward if foot velocity is significant (swing phase) or contact force is zero
+        # Using contact forces to determine swing phase: force < 1.0 means swing
+        is_swing = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) < 1.0
+        
+        # Target clearance height (e.g. 0.05m to 0.1m)
+        target_height = 0.03
+        
+        # Penalize squared error from target height during swing phase
+        foot_z_error = torch.square(foot_height - target_height)
+        
+        # Apply mask BEFORE summing over feet
+        foot_z_error *= is_swing
+        
+        reward = torch.sum(foot_z_error, dim=1)
+        return reward
+    
+
     def _reward_stumble(self):
         # Penalize feet hitting vertical surfaces
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
