@@ -95,7 +95,7 @@ class sdogCfg( LeggedRobotCfg ):
             height_measurements = 5.0
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.15
+        base_height_target = 0.10
         tracking_sigma = 0.03#0.05
         class scales( LeggedRobotCfg.rewards.scales ):
             torques = -0.2
