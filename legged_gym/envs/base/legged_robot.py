@@ -173,6 +173,7 @@ class LeggedRobot(BaseTask):
         self.last_actions[env_ids] = 0.
         self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
+        self.feet_contact_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
         # fill extras
@@ -522,6 +523,8 @@ class LeggedRobot(BaseTask):
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,) # TODO change this
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.feet_contact_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.last_feet_contact_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
@@ -900,6 +903,12 @@ class LeggedRobot(BaseTask):
         # update last feet air time
         self.last_feet_air_time = torch.where(first_contact, self.feet_air_time, self.last_feet_air_time)
         
+        # update feet contact time
+        first_air = (self.feet_contact_time > 0.) * ~contact_filt
+        self.feet_contact_time += self.dt
+        self.last_feet_contact_time = torch.where(first_air, self.feet_contact_time, self.last_feet_contact_time)
+        self.feet_contact_time *= contact_filt
+        
         rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
         rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
         self.feet_air_time *= ~contact_filt
@@ -911,28 +920,32 @@ class LeggedRobot(BaseTask):
 
     def _reward_foot_clearance(self):
         # Reward foot height during swing phase
-        # Get foot positions in world frame
+        target_height = -0.03
+        tanh_mult = 2.0
+
+        # Get foot positions and velocities in world frame
         foot_pos = self.rigid_body_states[:, self.feet_indices, 0:3]
+        foot_vel = self.rigid_body_states[:, self.feet_indices, 7:10]
         
-        # Calculate height above ground (assuming flat ground at z=0 for now or use relative height if terrain is complex)
-        # Note: self.root_states[:, 2] is base height, but we want absolute foot height or relative to base
-        # Here we use absolute z height. If terrain is not flat, we should subtract terrain height.
-        foot_height = foot_pos[:, :, 2]
+        # Translate to root frame
+        foot_pos_rel = foot_pos - self.root_states[:, 0:3].unsqueeze(1)
+        foot_vel_rel = foot_vel - self.root_states[:, 7:10].unsqueeze(1)
         
-        # Only reward if foot velocity is significant (swing phase) or contact force is zero
-        # Using contact forces to determine swing phase: force < 1.0 means swing
-        is_swing = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) < 1.0
+        # Transform to body frame
+        num_feet = len(self.feet_indices)
+        flat_foot_pos_rel = foot_pos_rel.view(-1, 3)
+        flat_foot_vel_rel = foot_vel_rel.view(-1, 3)
+        flat_base_quat = self.base_quat.repeat_interleave(num_feet, dim=0)
         
-        # Target clearance height (e.g. 0.05m to 0.1m)
-        target_height = 0.03
+        foot_pos_b = quat_rotate_inverse(flat_base_quat, flat_foot_pos_rel).view(self.num_envs, num_feet, 3)
+        foot_vel_b = quat_rotate_inverse(flat_base_quat, flat_foot_vel_rel).view(self.num_envs, num_feet, 3)
         
-        # Penalize squared error from target height during swing phase
-        foot_z_error = torch.square(foot_height - target_height)
+        foot_z_error = torch.square(foot_pos_b[:, :, 2] - target_height)
+        foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(foot_vel_b[:, :, :2], dim=2))
         
-        # Apply mask BEFORE summing over feet
-        foot_z_error *= is_swing
+        reward = torch.sum(foot_z_error * foot_velocity_tanh, dim=1)
+        reward *= (torch.norm(self.commands[:, :2], dim=1) > 0.1)
         
-        reward = torch.sum(foot_z_error, dim=1)
         return reward
     
 

@@ -30,10 +30,10 @@
 
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-class xgoCfg( LeggedRobotCfg ):
+class sdogCfg( LeggedRobotCfg ):
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 48
+        num_observations = 45
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.15] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
@@ -71,8 +71,8 @@ class xgoCfg( LeggedRobotCfg ):
             ang_vel_yaw = [-1, 1]    # min max [rad/s]
             heading = [-3.14, 3.14]
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/xgo/urdf/xgo.urdf'
-        name = "xgo"
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/sdgo/urdf/sdgo.urdf'
+        name = "sdgo"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
         terminate_after_contacts_on = ["base", "hip", "body", "calf"]
@@ -95,23 +95,23 @@ class xgoCfg( LeggedRobotCfg ):
             height_measurements = 5.0
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.1
+        base_height_target = 0.15
         tracking_sigma = 0.03#0.05
         class scales( LeggedRobotCfg.rewards.scales ):
             torques = -0.2
             dof_pos_limits = -1.0
-            feet_air_time = 3.0
+            feet_air_time = 5.0
             action_rate = -0.12
             dof_acc = -2.5e-7
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
             orientation = -0.2
             lin_vel_z = -0.5
-            feet_air_time_variance = 0.5
-            foot_clearance = -0.2
+            feet_air_time_variance = -3.0
+            foot_clearance = -2.0
 
 
-class xgoCfgPPO( LeggedRobotCfgPPO ):
+class sdogCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
         init_noise_std = 1.0
         actor_hidden_dims = [256, 128, 64]
@@ -121,4 +121,4 @@ class xgoCfgPPO( LeggedRobotCfgPPO ):
         entropy_coef = 0.01
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
-        experiment_name = 'xgo'
+        experiment_name = 'sdog'

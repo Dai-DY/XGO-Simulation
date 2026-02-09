@@ -217,8 +217,8 @@ def play(args):
                         target_vel_yaw = 0.0
             
             # Clip commands
-            target_vel_x = np.clip(target_vel_x, -1.0, 1.0)
-            target_vel_y = np.clip(target_vel_y, -1.0, 1.0)
+            target_vel_x = np.clip(target_vel_x, -0.2, 0.2)
+            target_vel_y = np.clip(target_vel_y, -0.2, 0.2)
             target_vel_yaw = np.clip(target_vel_yaw, -1.0, 1.0)
 
             # Set commands

@@ -35,11 +35,25 @@ from datetime import datetime
 import isaacgym
 from legged_gym.envs import *
 from legged_gym.utils import get_args, task_registry
+from legged_gym.utils.helpers import class_to_dict
 import torch
 
 def train(args):
     env, env_cfg = task_registry.make_env(name=args.task, args=args)
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args)
+    if ppo_runner.log_dir is not None:
+        os.makedirs(ppo_runner.log_dir, exist_ok=True)
+        reward_scales = class_to_dict(env_cfg.rewards.scales)
+        with open(os.path.join(ppo_runner.log_dir, 'rewards.txt'), 'w') as f:
+            f.write(f"Task: {args.task}\n")
+            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write("-" * 60 + "\n")
+            f.write(f"{'Reward Name':<30} | {'Scale'}\n")
+            f.write("-" * 60 + "\n")
+            for name, scale in reward_scales.items():
+                if scale != 0:
+                    f.write(f"{name:<30} | {scale}\n")
+            f.write("-" * 60 + "\n")
     ppo_runner.learn(num_learning_iterations=train_cfg.runner.max_iterations, init_at_random_ep_len=True)
 
 if __name__ == '__main__':
