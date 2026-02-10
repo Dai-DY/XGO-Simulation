@@ -25,8 +25,10 @@ def get_kinematics(args):
     # Subscribe to keyboard events
     if env.viewer:
         env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_SPACE, "NEXT_JOINT")
-        env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_UP, "INC_ANGLE")
-        env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_DOWN, "DEC_ANGLE")
+        env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_UP, "MOVE_UP")
+        env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_DOWN, "MOVE_DOWN")
+        env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_LEFT, "DEC_ANGLE")
+        env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_RIGHT, "INC_ANGLE")
         env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_R, "RESET")
         env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_Q, "QUIT")
         env.gym.subscribe_viewer_keyboard_event(env.viewer, gymapi.KEY_ESCAPE, "QUIT")
@@ -36,18 +38,22 @@ def get_kinematics(args):
     # Create target joint angles needed
     # Using existing default positions as a starting point
     target_dof_pos = env.default_dof_pos.clone()
+    base_height = 0.3
     
     selected_joint_idx = 0
     num_dofs = len(env.dof_names)
     
     print("\nInstructions:")
     print("  SPACE: Select next joint")
-    print("  UP/DOWN: Increase/Decrease angle")
+    print("  UP/DOWN: Move Base Up/Down")
+    print("  LEFT/RIGHT: Decrease/Increase angle")
     print("  R: Reset to default")
     print("  ESC/Q: Quit\n")
 
     # Initial camera setup flag
     camera_set = False
+    
+    last_output = ""
 
     while env.viewer and not env.gym.query_viewer_has_closed(env.viewer):
         # Handle events
@@ -59,6 +65,11 @@ def get_kinematics(args):
             elif event.action == "NEXT_JOINT" and event.value > 0:
                 selected_joint_idx = (selected_joint_idx + 1) % num_dofs
                 print(f"\nSelected joint: {env.dof_names[selected_joint_idx]}")
+            
+            elif event.action == "MOVE_UP" and event.value > 0:
+                base_height += 0.01
+            elif event.action == "MOVE_DOWN" and event.value > 0:
+                base_height -= 0.01
                 
             elif event.action == "INC_ANGLE" and event.value > 0: # Check if key is pressed (value=1) or repeated
                 target_dof_pos[0, selected_joint_idx] += 0.05
@@ -70,6 +81,7 @@ def get_kinematics(args):
 
             elif event.action == "RESET" and event.value > 0:
                 target_dof_pos = env.default_dof_pos.clone()
+                base_height = 0.3
                 print("Reset to default positions")
         
         # Override DOFs with target
@@ -79,7 +91,7 @@ def get_kinematics(args):
         gym_dof_state[0, :, 1] = 0.0 # velocity
         
         # Override Root State to PIN the robot in the air (upright)
-        env.root_states[0, 0:3] = torch.tensor([0.0, 0.0, 0.10], device=env.device) # Fix height
+        env.root_states[0, 0:3] = torch.tensor([0.0, 0.0, base_height], device=env.device) # Fix height
         env.root_states[0, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=env.device) # Identity Quat (Upright)
         env.root_states[0, 7:13] = 0.0 # Zero velocities
 
@@ -102,6 +114,7 @@ def get_kinematics(args):
         env.gym.refresh_dof_state_tensor(env.sim)
         env.gym.refresh_actor_root_state_tensor(env.sim)
         env.gym.refresh_rigid_body_state_tensor(env.sim)
+        env.gym.refresh_net_contact_force_tensor(env.sim)
         
         # Get states
         base_pos = env.root_states[0, 0:3]
@@ -110,6 +123,9 @@ def get_kinematics(args):
         
         # Feet positions
         feet_pos_world = env.rigid_body_states[0, env.feet_indices, 0:3]
+
+        # Feet forces
+        feet_forces = env.contact_forces[0, env.feet_indices, 2]
         
         # Transform to base frame
         feet_pos_rel_world = feet_pos_world - base_pos.unsqueeze(0)
@@ -121,12 +137,17 @@ def get_kinematics(args):
         # Draw on screen
         env.gym.clear_lines(env.viewer)
         
-        # Print info periodically or clear screen?
-        # Let's just print stats cleanly using ANSI escape codes to overwrite lines
-        print(f"\033[KSelected: {env.dof_names[selected_joint_idx]} ({target_dof_pos[0, selected_joint_idx]:.2f})")
-        print(f"\033[KBase Z: {base_z:.4f}")
-        print(f"\033[KFeet Z (Base): " + " | ".join([f"{feet_pos_base[i,2]:.4f}" for i in range(len(env.feet_indices))]))
-        print(f"\033[3A", end="")
+        # Print info only on change
+        current_output = (
+            f"Selected: {env.dof_names[selected_joint_idx]} ({target_dof_pos[0, selected_joint_idx]:.2f})\n"
+            f"Base Z: {base_z:.4f}\n"
+            f"Feet Z (Base): " + " | ".join([f"{feet_pos_base[i,2]:.4f}" for i in range(len(env.feet_indices))]) + "\n"
+            f"Feet Force Z: " + " | ".join([f"{feet_forces[i]:.2f}" for i in range(len(env.feet_indices))])
+        )
+        
+        if current_output != last_output:
+            print(current_output)
+            last_output = current_output
         
         # Render
         env.gym.step_graphics(env.sim)

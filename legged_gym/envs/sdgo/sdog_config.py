@@ -58,8 +58,8 @@ class sdogCfg( LeggedRobotCfg ):
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
-        stiffness = {'joint': 2.}  # [N*m/rad]
-        damping = {'joint': 0.005}     # [N*m*s/rad]
+        stiffness = {'joint': 1.0}  # [N*m/rad]
+        damping = {'joint': 0.02}     # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
@@ -96,19 +96,22 @@ class sdogCfg( LeggedRobotCfg ):
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
         base_height_target = 0.10
-        tracking_sigma = 0.03#0.05
+        tracking_sigma = 0.03
         class scales( LeggedRobotCfg.rewards.scales ):
-            torques = -0.2
-            dof_pos_limits = -1.0
-            feet_air_time = 5.0
-            action_rate = -0.12
-            dof_acc = -2.5e-7
+            # reward scales
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
-            orientation = -0.2
+            feet_air_time = 0.8
+            # penalty scales
+            stand_still = 0.0 #-0.2
+            torques = -2.5e-1
+            dof_pos_limits = -1.0
+            action_rate = -0.12 #-0.12
+            dof_acc = -2.5e-7
+            orientation = -3.0
             lin_vel_z = -0.5
             feet_air_time_variance = -3.0
-            foot_clearance = -2.0
+            foot_clearance = -0.2
 
 
 class sdogCfgPPO( LeggedRobotCfgPPO ):
