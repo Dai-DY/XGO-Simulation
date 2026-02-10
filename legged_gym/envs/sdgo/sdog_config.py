@@ -105,7 +105,7 @@ class sdogCfg( LeggedRobotCfg ):
             # penalty scales
             stand_still = 0.0 #-0.2
             torques = -2.5e-1
-            dof_pos_limits = -1.0
+            dof_pos_limits = -3.0
             action_rate = -0.12 #-0.12
             dof_acc = -2.5e-7
             orientation = -3.0
@@ -113,6 +113,7 @@ class sdogCfg( LeggedRobotCfg ):
             feet_air_time_variance = -3.0
             foot_clearance = -0.2
             feet_gait = 0.5
+            joint_mirror = -0.3
 
 
 class sdogCfgPPO( LeggedRobotCfgPPO ):

@@ -162,10 +162,31 @@ class sdog(LeggedRobot):
         reward = torch.where(cmd > 0.05, sync_reward * async_reward, 0)
         return reward
     
-    # def _reward_joint_mirror(self):
-    #     # Penalize difference between left and right joints to encourage symmetric gaits
-    #     joint_pos = self.dof_pos
-    #     mirror_error = torch.square(joint_pos[:, 0] + joint_pos[:, 3]) + torch.square(joint_pos[:, 1] + joint_pos[:, 4]) + torch.square(joint_pos[:, 2] + joint_pos[:, 5])
-    #     reward = torch.exp(-mirror_error/0.1)
-    #     return reward
+    def _reward_joint_mirror(self):
+        if not hasattr(self, "mirror_joint_indices"):
+            mirror_joints = [
+                ["fl_thigh_joint", "br_thigh_joint"],
+                ["fl_calf_joint",  "br_calf_joint"],
+                ["fr_thigh_joint", "bl_thigh_joint"],
+                ["fr_calf_joint",  "bl_calf_joint"],
+            ]
+            self.mirror_joint_indices = []
+            for n1, n2 in mirror_joints:
+                try:
+                    # Map string name to integer index using dof_names
+                    idx1 = self.dof_names.index(n1)
+                    idx2 = self.dof_names.index(n2)
+                    self.mirror_joint_indices.append([idx1, idx2])
+                except ValueError:
+                    print(f"Warning: Joint pair {n1}, {n2} not found in dof_names")
+        # print(self.mirror_joint_indices)
+        reward = torch.zeros(self.num_envs, device=self.device)
+        for idx1, idx2 in self.mirror_joint_indices:
+            diff = torch.square(self.dof_pos[:, idx1] - self.dof_pos[:, idx2])
+            reward += diff
+        reward /= len(self.mirror_joint_indices)
+        projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
+        upright_scale = torch.clamp(-projected_gravity[:, 2], 0.0, 0.7) / 0.7
+        reward *= upright_scale
+        return reward
 
