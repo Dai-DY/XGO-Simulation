@@ -24,11 +24,11 @@ def check_reward_functions():
     # Get reward scales
     reward_scales = class_to_dict(env_cfg.rewards.scales)
     
-    print("-" * 60)
+    print("-" * 100)
     print(f"Checking rewards for task: {args.task}")
-    print("-" * 60)
+    print("-" * 100)
     print(f"{'Reward Name':<30} | {'Scale':<10} | {'Function Name':<30} | {'Status'}")
-    print("-" * 60)
+    print("-" * 100)
     
     all_good = True
     
@@ -45,12 +45,12 @@ def check_reward_functions():
             
         print(f"{name:<30} | {scale:<10.2f} | {func_name:<30} | {status}")
 
-    print("-" * 60)
+    print("-" * 100)
     
     # Also check if there are reward functions defined in task_class that are NOT in the config
     # This helps identify available rewards that are unused
     print(f"Available unused reward functions in {task_class.__name__} (scale=0 or missing in config):")
-    print("-" * 60)
+    print("-" * 100)
     
     robot_methods = [m for m in dir(task_class) if m.startswith('_reward_')]
     active_reward_funcs = ['_reward_' + name for name, scale in reward_scales.items() if scale != 0]

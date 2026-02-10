@@ -133,3 +133,39 @@ class sdog(LeggedRobot):
 
         # set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.01).unsqueeze(1)
+
+    def sync_helper(self, foot0, foot1):
+        air_time = self.feet_air_time
+        contact_time = self.feet_contact_time
+        se_air = torch.clip(torch.square(air_time[:, foot0] - air_time[:, foot1]), max=0.04)
+        se_contact = torch.clip(torch.square(contact_time[:, foot0] - contact_time[:, foot1]), max=0.04)
+        return torch.exp(-(se_air + se_contact)/0.7)
+    
+    def async_helper(self, foot0, foot1):
+        air_time = self.feet_air_time
+        contact_time = self.feet_contact_time
+        se_act0 = torch.clip(torch.square(air_time[:, foot0] - contact_time[:, foot1]), max=0.04)
+        se_act1 = torch.clip(torch.square(contact_time[:, foot0] - air_time[:, foot1]), max=0.04)
+        return torch.exp(-(se_act0 + se_act1)/0.7)
+    
+    def _reward_feet_gait(self):
+        # for synchronous feet, the contact (air) times of two feet should match
+        sync_reward = self.sync_helper(0, 3) * self.sync_helper(1, 2)
+        # for asynchronous feet, the contact time of one foot should match the air time of the other one
+        async_reward0 = self.async_helper(0, 1)
+        async_reward1 = self.async_helper(0, 2)
+        async_reward2 = self.async_helper(1, 3)
+        async_reward3 = self.async_helper(2, 3)
+        async_reward = async_reward0 * async_reward1 * async_reward2 * async_reward3
+        # only enforce gait if cmd > 0
+        cmd = torch.linalg.norm(self.commands[:, :2], dim=1)
+        reward = torch.where(cmd > 0.05, sync_reward * async_reward, 0)
+        return reward
+    
+    # def _reward_joint_mirror(self):
+    #     # Penalize difference between left and right joints to encourage symmetric gaits
+    #     joint_pos = self.dof_pos
+    #     mirror_error = torch.square(joint_pos[:, 0] + joint_pos[:, 3]) + torch.square(joint_pos[:, 1] + joint_pos[:, 4]) + torch.square(joint_pos[:, 2] + joint_pos[:, 5])
+    #     reward = torch.exp(-mirror_error/0.1)
+    #     return reward
+

@@ -112,6 +112,7 @@ class sdogCfg( LeggedRobotCfg ):
             lin_vel_z = -0.5
             feet_air_time_variance = -3.0
             foot_clearance = -0.2
+            feet_gait = 0.5
 
 
 class sdogCfgPPO( LeggedRobotCfgPPO ):
