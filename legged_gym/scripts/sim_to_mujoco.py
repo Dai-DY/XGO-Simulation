@@ -30,7 +30,7 @@ def pd_control(target_q, q, kp, dq, kd):
 
 if __name__ == "__main__":
 
-    with open("/home/ddy/project/XGO-Simulation/legged_gym/config/sdog.yaml", "r") as f:
+    with open("legged_gym/config/sdog.yaml", "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
         policy_path = config["policy_path"]
         xml_path = config["xml_path"]
@@ -58,6 +58,23 @@ if __name__ == "__main__":
         
         cmd = np.array(config["cmd_init"], dtype=np.float32)
 
+        # Isaac Gym Order: BL, BR, FL, FR
+        # MuJoCo Order: FR, FL, BR, BL
+        
+        # Map MuJoCo (FR, FL, BR, BL) -> Isaac (BL, BR, FL, FR)
+        # FR (0,1,2) -> Isaac FR (9,10,11)
+        # FL (3,4,5) -> Isaac FL (6,7,8)
+        # BR (6,7,8) -> Isaac BR (3,4,5)
+        # BL (9,10,11) -> Isaac BL (0,1,2)
+        mujoco_2_isaac_idx = [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
+        
+        # Map Isaac (BL, BR, FL, FR) -> MuJoCo (FR, FL, BR, BL)
+        # BL (0,1,2) -> MuJoCo BL (9,10,11)
+        # BR (3,4,5) -> MuJoCo BR (6,7,8)
+        # FL (6,7,8) -> MuJoCo FL (3,4,5)
+        # FR (9,10,11) -> MuJoCo FR (0,1,2)
+        isaac_2_mujoco_idx = [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
+
     # observations
     obs_buff = torch.zeros(1, num_obs*num_obs_frame, dtype=torch.float)
     # define context variables
@@ -71,25 +88,25 @@ if __name__ == "__main__":
     m = mujoco.MjModel.from_xml_path(xml_path)
 
     # 遍历所有执行器
-    print("执行器顺序及其控制的关节：")
-    for actuator_id in range(m.nu):
-        # 获取执行器名称
-        actuator_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_ACTUATOR, actuator_id)
+    # print("执行器顺序及其控制的关节：")
+    # for actuator_id in range(m.nu):
+    #     # 获取执行器名称
+    #     actuator_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_ACTUATOR, actuator_id)
         
-        # 获取执行器类型和关联的关节ID
-        trn_type = m.actuator_trntype[actuator_id]
-        trn_id = m.actuator_trnid[actuator_id, 0]  # 假设第一个目标为关节
+    #     # 获取执行器类型和关联的关节ID
+    #     trn_type = m.actuator_trntype[actuator_id]
+    #     trn_id = m.actuator_trnid[actuator_id, 0]  # 假设第一个目标为关节
         
-        # 检查是否为关节型执行器
-        if trn_type == mjtTrn.mjTRN_JOINT:
-            joint_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_JOINT, trn_id)
-        else:
-            joint_name = "N/A (非关节执行器)"
+    #     # 检查是否为关节型执行器
+    #     if trn_type == mjtTrn.mjTRN_JOINT:
+    #         joint_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_JOINT, trn_id)
+    #     else:
+    #         joint_name = "N/A (非关节执行器)"
         
-        # 输出信息
-        print(f"执行器索引 {actuator_id} - 名称: {actuator_name}")
-        print(f"    控制关节: {joint_name} (关节索引: {trn_id})")
-        print("-----------------------------------------")
+    #     # 输出信息
+    #     print(f"执行器索引 {actuator_id} - 名称: {actuator_name}")
+    #     print(f"    控制关节: {joint_name} (关节索引: {trn_id})")
+    #     print("-----------------------------------------")
 
 
     d = mujoco.MjData(m)
@@ -127,13 +144,18 @@ if __name__ == "__main__":
                 obs[:3] = omega
                 obs[3:6] = gravity_orientation
                 obs[6:9] = cmd * cmd_scale
-                obs[9 : 9 + num_actions] = qj
-                obs[9 + num_actions : 9 + 2 * num_actions] = dqj
+                obs[9 : 9 + num_actions] = qj[mujoco_2_isaac_idx]
+                obs[9 + num_actions : 9 + 2 * num_actions] = dqj[mujoco_2_isaac_idx]
                 obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
 
-                # obs_buff[:,num_obs : num_obs * num_obs_frame] = obs_buff[:, : num_obs * (num_obs_frame-1)].clone()
-                # obs_buff[:, : num_obs] = torch.from_numpy(obs)
-                # obs_tensor = obs_buff.clone()
+                if counter % 20 == 0:
+                    names = ["Omega", "Grav", "Cmd", "DofPos", "DofVel", "LastAct"]
+                    starts = [0, 3, 6, 9, 21, 33]
+                    ends = [3, 6, 9, 21, 33, 45]
+                    print(f"\n=== Step {counter} Observation Debug (Isaac Frame) ===")
+                    for name, s, e in zip(names, starts, ends):
+                        print(f"{name:<8}: {obs[s:e]}")
+                    print("====================================================")
 
                 # policy inference
                 # Model expects (1, 45), not (1, 270)
@@ -143,7 +165,7 @@ if __name__ == "__main__":
                 # transform action to target_dof_pos
                 action[[0, 3, 6, 9]] *= hip_reduction
 
-                target_dof_pos = action * action_scale + default_angles
+                target_dof_pos = action[isaac_2_mujoco_idx] * action_scale + default_angles
 
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.

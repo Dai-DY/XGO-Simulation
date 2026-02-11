@@ -1,5 +1,5 @@
 # Config for sdog
-policy_path: "logs/sdog/exported/policies/retrain_2450.pt"
+policy_path: "logs/sdog/exported/policies/1000round.pt"
 xml_path: "resources/robots/sdgo/xml/sdgo.xml"
 
 # Total simulation time
@@ -34,4 +34,4 @@ num_actions: 12
 num_obs: 45
 num_obs_frame: 6
 hip_reduction: 1.0
-cmd_init: [0.2, 0.0, 0.0]
+cmd_init: [0.0, 0.0, 0.0]
