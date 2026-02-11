@@ -94,7 +94,7 @@ class sdogCfg( LeggedRobotCfg ):
             dof_vel = 0.1
             height_measurements = 5.0
     class rewards( LeggedRobotCfg.rewards ):
-        soft_dof_pos_limit = 0.9
+        soft_dof_pos_limit = 0.8
         base_height_target = 0.10
         tracking_sigma = 0.03
         class scales( LeggedRobotCfg.rewards.scales ):
@@ -102,18 +102,18 @@ class sdogCfg( LeggedRobotCfg ):
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
             feet_air_time = 0.8
+            feet_gait = 0.3
             # penalty scales
-            stand_still = 0.0 #-0.2
+            stand_still = -0.2
             torques = -2.5e-1
-            dof_pos_limits = -3.0
-            action_rate = -0.12 #-0.12
+            dof_pos_limits = -10.0
+            action_rate = -0.12
             dof_acc = -2.5e-7
             orientation = -3.0
             lin_vel_z = -0.5
-            feet_air_time_variance = -3.0
+            feet_air_time_variance = -18.0
             foot_clearance = -0.2
-            feet_gait = 0.5
-            joint_mirror = -0.3
+            joint_mirror = -5.0
 
 
 class sdogCfgPPO( LeggedRobotCfgPPO ):

@@ -27,39 +27,6 @@ class sdog(LeggedRobot):
         # add noise if needed
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
-
-    def _reward_feet_air_time(self):
-        # Reward long steps
-        # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
-        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-        contact_filt = torch.logical_or(contact, self.last_contacts) 
-        self.last_contacts = contact
-        first_contact = (self.feet_air_time > 0.) * contact_filt
-        self.feet_air_time += self.dt
-        
-        # update last feet air time
-        self.last_feet_air_time = torch.where(first_contact, self.feet_air_time, self.last_feet_air_time)
-        
-        # update feet contact time
-        first_air = (self.feet_contact_time > 0.) * ~contact_filt
-        self.feet_contact_time += self.dt
-        self.last_feet_contact_time = torch.where(first_air, self.feet_contact_time, self.last_feet_contact_time)
-        self.feet_contact_time *= contact_filt
-        
-        # Reduced threshold from 0.5 to 0.25 for small robot
-        rew_airTime = torch.sum((self.feet_air_time - 0.2) * first_contact, dim=1) # reward only on first contact with the ground
-        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
-        self.feet_air_time *= ~contact_filt
-        return rew_airTime
-    
-    def _reward_stand_still(self):
-        # Penalize motion at zero commands
-        return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.01)
-    
-    def _reward_tracking_ang_vel(self):
-        # Tracking of angular velocity commands (yaw) 
-        ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        return torch.exp(-ang_vel_error/0.2)
     
     def _reset_root_states(self, env_ids):
         """ Resets ROOT states position and velocities of selected environmments
@@ -82,7 +49,93 @@ class sdog(LeggedRobot):
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+
+    def _resample_commands(self, env_ids):
+        """ Randommly select commands of some environments
+
+        Args:
+            env_ids (List[int]): Environments ids for which new commands are needed
+        """
+        self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        if self.cfg.commands.heading_command:
+            self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        else:
+            self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+
+        # set small commands to zero
+        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.01).unsqueeze(1)
+
+    # rewrite reward functions
+    def _reward_stand_same_pose(self):
+        if not hasattr(self, "stand_same_pose_indices"):
+            self.stand_same_pose_indices = {
+                "hip_pos": [],
+                "hip_neg": [],
+                "thigh": [],
+                "calf": []
+            }
+            for i, name in enumerate(self.dof_names):
+                if "thigh" in name:
+                    self.stand_same_pose_indices["thigh"].append(i)
+                elif "calf" in name:
+                     self.stand_same_pose_indices["calf"].append(i)
+                elif "hip" in name:
+                    if "fr" in name or "br" in name:
+                         self.stand_same_pose_indices["hip_neg"].append(i)
+                    else:
+                         self.stand_same_pose_indices["hip_pos"].append(i)
+        
+        hip_pos = self.dof_pos[:, self.stand_same_pose_indices["hip_pos"]]
+        hip_neg = self.dof_pos[:, self.stand_same_pose_indices["hip_neg"]]
+        
+        all_hips = torch.cat([hip_pos, -hip_neg], dim=1)
+        all_thighs = self.dof_pos[:, self.stand_same_pose_indices["thigh"]]
+        all_calves = self.dof_pos[:, self.stand_same_pose_indices["calf"]]
+        
+        var_hips = torch.var(all_hips, dim=1)
+        var_thighs = torch.var(all_thighs, dim=1)
+        var_calves = torch.var(all_calves, dim=1)
+        
+        total_var = var_hips + var_thighs + var_calves
+        
+        is_standing = torch.norm(self.commands[:, :2], dim=1) < 0.1
+        
+        return total_var * is_standing
+
+    def _reward_feet_air_time(self):
+        # Reward long steps
+        # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        contact_filt = torch.logical_or(contact, self.last_contacts) 
+        self.last_contacts = contact
+        first_contact = (self.feet_air_time > 0.) * contact_filt
+        self.feet_air_time += self.dt
+        
+        # update last feet air time
+        self.last_feet_air_time = torch.where(first_contact, self.feet_air_time, self.last_feet_air_time)
+        
+        # update feet contact time
+        first_air = (self.feet_contact_time > 0.) * ~contact_filt
+        self.feet_contact_time += self.dt
+        self.last_feet_contact_time = torch.where(first_air, self.feet_contact_time, self.last_feet_contact_time)
+        self.feet_contact_time *= contact_filt
+        
+        # Reduced threshold from 0.5 to 0.2 for small robot
+        rew_airTime = torch.sum((self.feet_air_time - 0.2) * first_contact, dim=1) # reward only on first contact with the ground
+        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        self.feet_air_time *= ~contact_filt
+        return rew_airTime
     
+    def _reward_stand_still(self):
+        # Penalize motion at zero commands
+        return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.01)
+    
+    def _reward_tracking_ang_vel(self):
+        # Tracking of angular velocity commands (yaw) 
+        ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
+        return torch.exp(-ang_vel_error/0.2)
+        
     def _reward_foot_clearance(self):
         # Reward foot height during swing phase
         target_height = -0.06
@@ -118,22 +171,6 @@ class sdog(LeggedRobot):
         reward = torch.var(torch.clip(self.last_feet_air_time, max=0.5), dim=1) + torch.var(torch.clip(self.last_feet_contact_time, max=0.5), dim=1)
         return reward
     
-    def _resample_commands(self, env_ids):
-        """ Randommly select commands of some environments
-
-        Args:
-            env_ids (List[int]): Environments ids for which new commands are needed
-        """
-        self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        if self.cfg.commands.heading_command:
-            self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        else:
-            self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-
-        # set small commands to zero
-        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.01).unsqueeze(1)
-
     def sync_helper(self, foot0, foot1):
         air_time = self.feet_air_time
         contact_time = self.feet_contact_time

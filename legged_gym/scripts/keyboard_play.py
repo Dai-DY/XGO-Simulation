@@ -55,10 +55,11 @@ def plotter_process(data_queue):
     yaw_buf = deque(maxlen=plot_len)
     cmd_x_buf = deque(maxlen=plot_len)
     cmd_y_buf = deque(maxlen=plot_len)
+    height_buf = deque(maxlen=plot_len)
 
     # Initialize Plot
     plt.ion()
-    fig, axes = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(8, 9), sharex=True)
     
     line_vel_x, = axes[0].plot([], [], label='Vel X', color='b')
     line_cmd_x, = axes[0].plot([], [], label='Cmd X', color='b', linestyle='--')
@@ -77,8 +78,14 @@ def plotter_process(data_queue):
     axes[1].set_title('Body Orientation')
     axes[1].legend(loc='upper right')
     axes[1].grid(True)
-    axes[1].set_xlabel('Step')
     axes[1].set_ylim(-1.5, 1.5)
+
+    line_height, = axes[2].plot([], [], label='Base Height', color='m')
+    axes[2].set_ylabel('Height (m)')
+    axes[2].set_title('Base Height')
+    axes[2].legend(loc='upper right')
+    axes[2].grid(True)
+    axes[2].set_xlabel('Time (s)')
 
     while True:
         try:
@@ -89,7 +96,7 @@ def plotter_process(data_queue):
                     plt.close(fig)
                     return # Exit signal
                 
-                t, vx, vy, cx, cy, roll, pitch, yaw = data
+                t, vx, vy, cx, cy, roll, pitch, yaw, height = data
                 time_buf.append(t)
                 vel_x_buf.append(vx)
                 vel_y_buf.append(vy)
@@ -98,6 +105,7 @@ def plotter_process(data_queue):
                 roll_buf.append(roll)
                 pitch_buf.append(pitch)
                 yaw_buf.append(yaw)
+                height_buf.append(height)
 
             # Update plot
             line_vel_x.set_data(time_buf, vel_x_buf)
@@ -108,15 +116,29 @@ def plotter_process(data_queue):
             line_roll.set_data(time_buf, roll_buf)
             line_pitch.set_data(time_buf, pitch_buf)
             line_yaw.set_data(time_buf, yaw_buf)
+            
+            line_height.set_data(time_buf, height_buf)
 
             if len(time_buf) > 1:
                 axes[0].set_xlim(min(time_buf), max(time_buf) + 1e-3)
+                
+                # Dynamic scaling for height
+                if len(height_buf) > 0:
+                    min_h = min(height_buf)
+                    max_h = max(height_buf)
+                    margin = 0.1
+                    if max_h - min_h < 1e-6:
+                        margin = 0.1
+                    else:
+                        margin = (max_h - min_h) * 0.2
+                    axes[2].set_ylim(min_h - margin, max_h + margin)
             
             fig.canvas.draw()
             fig.canvas.flush_events()
             time.sleep(0.01)
             
         except Exception as e:
+            print(f"Plotting error: {e}")
             time.sleep(0.1)
 
 
@@ -232,9 +254,10 @@ def play(args):
             if i % plot_refresh_rate == 0:
                  base_lin = env.base_lin_vel[robot_index, :].detach().cpu().numpy()
                  roll, pitch, yaw = get_euler_xyz(env.base_quat[robot_index:robot_index+1, :])
+                 base_height = env.root_states[robot_index, 2].item()
                  
                  # Send data to plotter
-                 # t, vx, vy, cx, cy, roll, pitch, yaw
+                 # t, vx, vy, cx, cy, roll, pitch, yaw, height
                  data = (
                      i * env.dt,
                      base_lin[0],
@@ -243,7 +266,8 @@ def play(args):
                      target_vel_y,
                      roll.item(),
                      pitch.item(),
-                     yaw.item()
+                     yaw.item(),
+                     base_height
                  )
                  data_queue.put(data)
 
