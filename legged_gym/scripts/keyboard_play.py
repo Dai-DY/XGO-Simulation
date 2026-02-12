@@ -141,8 +141,6 @@ def plotter_process(data_queue):
             print(f"Plotting error: {e}")
             time.sleep(0.1)
 
-
-
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # override some parameters for testing
@@ -248,28 +246,39 @@ def play(args):
             env.commands[:, 1] = target_vel_y
             env.commands[:, 2] = target_vel_yaw
 
+            if i % 10 == 0:
+                names = ["Omega", "Grav", "Cmd", "DofPos", "DofVel", "LastAct"]
+                starts = [0, 3, 6, 9, 21, 33]
+                ends = [3, 6, 9, 21, 33, 45]
+                obs_data = obs[0, :].detach().cpu().numpy()
+                print(f"\n=== Step {i} Observation Debug (Isaac Frame) ===")
+                for name, s, e in zip(names, starts, ends):
+                    print(f"{name:<8}: {obs_data[s:e]}")
+                print("====================================================")
+
             actions = policy(obs.detach())
             obs, _, rews, dones, infos = env.step(actions.detach())
             
             if i % plot_refresh_rate == 0:
-                 base_lin = env.base_lin_vel[robot_index, :].detach().cpu().numpy()
-                 roll, pitch, yaw = get_euler_xyz(env.base_quat[robot_index:robot_index+1, :])
-                 base_height = env.root_states[robot_index, 2].item()
-                 
-                 # Send data to plotter
-                 # t, vx, vy, cx, cy, roll, pitch, yaw, height
-                 data = (
-                     i * env.dt,
-                     base_lin[0],
-                     base_lin[1],
-                     target_vel_x,
-                     target_vel_y,
-                     roll.item(),
-                     pitch.item(),
-                     yaw.item(),
-                     base_height
-                 )
-                 data_queue.put(data)
+                base_lin = env.base_lin_vel[robot_index, :].detach().cpu().numpy()
+                roll, pitch, yaw = get_euler_xyz(env.base_quat[robot_index:robot_index+1, :])
+                base_height = env.root_states[robot_index, 2].item()
+                
+                # Send data to plotter
+                # t, vx, vy, cx, cy, roll, pitch, yaw, height
+                data = (
+                    i * env.dt,
+                    base_lin[0],
+                    base_lin[1],
+                    target_vel_x,
+                    target_vel_y,
+                    roll.item(),
+                    pitch.item(),
+                    yaw.item(),
+                    base_height
+                )
+                data_queue.put(data)
+                
 
             if RECORD_FRAMES:
                 if i % 2:
@@ -279,33 +288,6 @@ def play(args):
             if MOVE_CAMERA:
                 camera_position += camera_vel * env.dt
                 env.set_camera(camera_position, camera_position + camera_direction)
-
-            if i < stop_state_log:
-                logger.log_states(
-                    {
-                        'dof_pos_target': actions[robot_index, joint_index].item() * env.cfg.control.action_scale,
-                        'dof_pos': env.dof_pos[robot_index, joint_index].item(),
-                        'dof_vel': env.dof_vel[robot_index, joint_index].item(),
-                        'dof_torque': env.torques[robot_index, joint_index].item(),
-                        'command_x': env.commands[robot_index, 0].item(),
-                        'command_y': env.commands[robot_index, 1].item(),
-                        'command_yaw': env.commands[robot_index, 2].item(),
-                        'base_vel_x': env.base_lin_vel[robot_index, 0].item(),
-                        'base_vel_y': env.base_lin_vel[robot_index, 1].item(),
-                        'base_vel_z': env.base_lin_vel[robot_index, 2].item(),
-                        'base_vel_yaw': env.base_ang_vel[robot_index, 2].item(),
-                        'contact_forces_z': env.contact_forces[robot_index, env.feet_indices, 2].cpu().numpy()
-                    }
-                )
-            elif i==stop_state_log:
-                logger.plot_states()
-        # if  0 < i < stop_rew_log:
-        #     if infos["episode"]:
-        #         num_episodes = torch.sum(env.reset_buf).item()
-        #         if num_episodes>0:
-        #             logger.log_rewards(infos["episode"], num_episodes)
-        # elif i==stop_rew_log:
-        #     logger.print_rewards()
 
     finally:
         data_queue.put(None)

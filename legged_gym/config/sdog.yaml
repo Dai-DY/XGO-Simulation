@@ -1,6 +1,7 @@
 # Config for sdog
-policy_path: "logs/sdog/exported/policies/1000round.pt"
-xml_path: "resources/robots/sdgo/xml/sdgo.xml"
+policy_path: "logs/sdog/exported/policies/retrain_2450.pt"
+# policy_path: "logs/sdog/exported/policies/policy_1.pt"
+xml_path: "resources/robots/sdgo/urdf/sdgo.xml"
 
 # Total simulation time
 simulation_duration: 600.0
@@ -9,16 +10,14 @@ simulation_dt: 0.005
 # Controller update frequency (meets the requirement of simulation_dt * controll_decimation=0.02; 50Hz)
 control_decimation: 4
 
-kps: [1, 1, 1,
-      1, 1, 1,
-      1, 1, 1,
-      1, 1, 1]
+log_on: True
+log_interval: 10
 
-kds: [0.02, 0.02, 0.02,
-      0.02, 0.02, 0.02,
-      0.02, 0.02, 0.02,
-      0.02, 0.02, 0.02]
 
+kps: 0.3
+kds: 0.001
+# kps: 0.5
+# kds: 0.005
 
 default_angles: [ 0.1000, 0.6000, -1.5000, # FL_hip_joint, FL_thigh_joint, FL_calf_joint
                   -0.1000, 0.6000, -1.5000, # FR_hip_joint, FR_thigh_joint, FR_calf_joint

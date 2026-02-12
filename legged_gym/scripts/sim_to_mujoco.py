@@ -39,8 +39,11 @@ if __name__ == "__main__":
         simulation_dt = config["simulation_dt"]
         control_decimation = config["control_decimation"]
 
-        kps = np.array(config["kps"], dtype=np.float32)
-        kds = np.array(config["kds"], dtype=np.float32)
+        log_on = config["log_on"]
+        log_interval = config["log_interval"]
+
+        kps = np.full(12, config["kps"], dtype=np.float32)
+        kds = np.full(12, config["kds"], dtype=np.float32)
 
         default_angles = np.array(config["default_angles"], dtype=np.float32)
 
@@ -87,7 +90,7 @@ if __name__ == "__main__":
     # Load robot model
     m = mujoco.MjModel.from_xml_path(xml_path)
 
-    # 遍历所有执行器
+    # # 遍历所有执行器
     # print("执行器顺序及其控制的关节：")
     # for actuator_id in range(m.nu):
     #     # 获取执行器名称
@@ -110,6 +113,7 @@ if __name__ == "__main__":
 
 
     d = mujoco.MjData(m)
+    d.qpos[2] = 0.16 # Set initial height to 0.15m
     m.opt.timestep = simulation_dt
 
     # load policy
@@ -128,9 +132,7 @@ if __name__ == "__main__":
 
             counter += 1
             if counter % control_decimation == 0:
-                # Apply control signal here.
-
-                # create observation
+                # Raw observations from MuJoCo
                 qj = d.qpos[7:]
                 dqj = d.qvel[6:]
                 quat = d.qpos[3:7]
@@ -140,7 +142,9 @@ if __name__ == "__main__":
                 dqj = dqj * dof_vel_scale
                 gravity_orientation = get_gravity_orientation(quat)
                 omega = omega * ang_vel_scale
-
+                
+                # Construct the observation in the order expected by the policy: 
+                # [omega, gravity_orientation, cmd, qj, dqj, last_action]
                 obs[:3] = omega
                 obs[3:6] = gravity_orientation
                 obs[6:9] = cmd * cmd_scale
@@ -148,25 +152,21 @@ if __name__ == "__main__":
                 obs[9 + num_actions : 9 + 2 * num_actions] = dqj[mujoco_2_isaac_idx]
                 obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
 
-                if counter % 20 == 0:
+                if log_on and counter % log_interval == 0:
                     names = ["Omega", "Grav", "Cmd", "DofPos", "DofVel", "LastAct"]
                     starts = [0, 3, 6, 9, 21, 33]
                     ends = [3, 6, 9, 21, 33, 45]
                     print(f"\n=== Step {counter} Observation Debug (Isaac Frame) ===")
                     for name, s, e in zip(names, starts, ends):
                         print(f"{name:<8}: {obs[s:e]}")
+                    print(f"tau output: {tau}")
                     print("====================================================")
 
-                # policy inference
-                # Model expects (1, 45), not (1, 270)
+                # Policy inference
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
                 action = policy(obs_tensor).detach().numpy().squeeze()
-                # print(f"action: {action}")
-                # transform action to target_dof_pos
                 action[[0, 3, 6, 9]] *= hip_reduction
-
                 target_dof_pos = action[isaac_2_mujoco_idx] * action_scale + default_angles
-
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.
             viewer.sync()
