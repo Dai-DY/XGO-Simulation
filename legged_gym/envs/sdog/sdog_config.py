@@ -71,8 +71,8 @@ class sdogCfg( LeggedRobotCfg ):
             ang_vel_yaw = [-1, 1]    # min max [rad/s]
             heading = [-3.14, 3.14]
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/sdgo/urdf/sdgo.urdf'
-        name = "sdgo"
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/sdog/urdf/sdog.urdf'
+        name = "sdog"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
         terminate_after_contacts_on = ["base", "hip", "body", "calf"]

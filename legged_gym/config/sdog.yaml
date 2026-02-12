@@ -1,7 +1,7 @@
 # Config for sdog
 policy_path: "logs/sdog/exported/policies/retrain_2450.pt"
 # policy_path: "logs/sdog/exported/policies/policy_1.pt"
-xml_path: "resources/robots/sdgo/urdf/sdgo.xml"
+xml_path: "resources/robots/sdog/urdf/sdog.xml"
 
 # Total simulation time
 simulation_duration: 600.0

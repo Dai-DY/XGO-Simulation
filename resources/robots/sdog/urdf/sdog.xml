@@ -1,4 +1,4 @@
-<mujoco model="sdgo">
+<mujoco model="sdog">
   <compiler angle="radian" meshdir="../meshes/"/>
   <option timestep="0.002"/>
 
