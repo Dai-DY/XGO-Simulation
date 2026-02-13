@@ -246,15 +246,16 @@ def play(args):
             env.commands[:, 1] = target_vel_y
             env.commands[:, 2] = target_vel_yaw
 
-            # if i % 10 == 0:
-            #     names = ["Omega", "Grav", "Cmd", "DofPos", "DofVel", "LastAct"]
-            #     starts = [0, 3, 6, 9, 21, 33]
-            #     ends = [3, 6, 9, 21, 33, 45]
-            #     obs_data = obs[0, :].detach().cpu().numpy()
-            #     print(f"\n=== Step {i} Observation Debug (Isaac Frame) ===")
-            #     for name, s, e in zip(names, starts, ends):
-            #         print(f"{name:<8}: {obs_data[s:e]}")
-            #     print("====================================================")
+            if i % 10 == 0:
+                names = ["Omega", "Grav", "Cmd", "DofPos", "DofVel", "LastAct"]
+                starts = [0, 3, 6, 9, 21, 33]
+                ends = [3, 6, 9, 21, 33, 45]
+                obs_data = obs[0, :].detach().cpu().numpy()
+                print(f"\n=== Step {i} Observation Debug (Isaac Frame) ===")
+                for name, s, e in zip(names, starts, ends):
+                    print(f"{name:<8}: {obs_data[s:e]}")
+                print(f"{'Torques':<8}: {env.torques.detach().cpu().numpy()[0, :]}")
+                print("====================================================")
 
             actions = policy(obs.detach())
             obs, _, rews, dones, infos = env.step(actions.detach())

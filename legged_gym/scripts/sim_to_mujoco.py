@@ -55,7 +55,6 @@ if __name__ == "__main__":
 
         num_actions = config["num_actions"]
         num_obs = config["num_obs"]
-        num_obs_frame = config["num_obs_frame"]
 
         hip_reduction = config["hip_reduction"]
         
@@ -78,8 +77,6 @@ if __name__ == "__main__":
         # FR (9,10,11) -> MuJoCo FR (0,1,2)
         isaac_2_mujoco_idx = [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
 
-    # observations
-    obs_buff = torch.zeros(1, num_obs*num_obs_frame, dtype=torch.float)
     # define context variables
     action = np.zeros(num_actions, dtype=np.float32)
     target_dof_pos = default_angles.copy()
@@ -90,30 +87,30 @@ if __name__ == "__main__":
     # Load robot model
     m = mujoco.MjModel.from_xml_path(xml_path)
 
-    # # 遍历所有执行器
-    # print("执行器顺序及其控制的关节：")
-    # for actuator_id in range(m.nu):
-    #     # 获取执行器名称
-    #     actuator_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_ACTUATOR, actuator_id)
+    # 遍历所有执行器
+    print("执行器顺序及其控制的关节：")
+    for actuator_id in range(m.nu):
+        # 获取执行器名称
+        actuator_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_ACTUATOR, actuator_id)
         
-    #     # 获取执行器类型和关联的关节ID
-    #     trn_type = m.actuator_trntype[actuator_id]
-    #     trn_id = m.actuator_trnid[actuator_id, 0]  # 假设第一个目标为关节
+        # 获取执行器类型和关联的关节ID
+        trn_type = m.actuator_trntype[actuator_id]
+        trn_id = m.actuator_trnid[actuator_id, 0]  # 假设第一个目标为关节
         
-    #     # 检查是否为关节型执行器
-    #     if trn_type == mjtTrn.mjTRN_JOINT:
-    #         joint_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_JOINT, trn_id)
-    #     else:
-    #         joint_name = "N/A (非关节执行器)"
+        # 检查是否为关节型执行器
+        if trn_type == mjtTrn.mjTRN_JOINT:
+            joint_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_JOINT, trn_id)
+        else:
+            joint_name = "N/A (非关节执行器)"
         
-    #     # 输出信息
-    #     print(f"执行器索引 {actuator_id} - 名称: {actuator_name}")
-    #     print(f"    控制关节: {joint_name} (关节索引: {trn_id})")
-    #     print("-----------------------------------------")
+        # 输出信息
+        print(f"执行器索引 {actuator_id} - 名称: {actuator_name}")
+        print(f"    控制关节: {joint_name} (关节索引: {trn_id})")
+        print("-----------------------------------------")
 
 
     d = mujoco.MjData(m)
-    d.qpos[2] = 0.16 # Set initial height to 0.15m
+    d.qpos[2] = 0.14 # Set initial height to 0.15m
     m.opt.timestep = simulation_dt
 
     # load policy
@@ -136,6 +133,7 @@ if __name__ == "__main__":
                 qj = d.qpos[7:]
                 dqj = d.qvel[6:]
                 quat = d.qpos[3:7]
+                # quat = np.array([d.qpos[4], d.qpos[5], d.qpos[6], d.qpos[3]])
                 omega = d.qvel[3:6]
 
                 qj = (qj - default_angles) * dof_pos_scale
@@ -159,7 +157,8 @@ if __name__ == "__main__":
                     print(f"\n=== Step {counter} Observation Debug (Isaac Frame) ===")
                     for name, s, e in zip(names, starts, ends):
                         print(f"{name:<8}: {obs[s:e]}")
-                    print(f"tau output: {tau}")
+                    # print(f"tau output: {tau}")
+                    # print(d.qpos[7:])
                     print("====================================================")
 
                 # Policy inference
