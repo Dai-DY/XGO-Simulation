@@ -78,7 +78,7 @@
       <body name="bl_hip" pos="-0.067842 0.02085 0">
         <!-- <inertial pos="0.00200326 0.025876 0.00551368" quat="0.417008 0.557126 -0.57552 0.429525" mass="0.0105904" diaginertia="4.59417e-06 4.13298e-06 1.28639e-06"/> -->
         <inertial pos="0.002003 0.025876 0.005514" mass="0.0105904" diaginertia="4.133e-06 1.552e-06 4.328e-06"/>
-        <joint name="bl_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.8 0.8" actuatorfrcrange="-0.45 0.45" class="motor"/>
+        <joint name="bl_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.3 0.3" actuatorfrcrange="-0.45 0.45" class="motor"/>
         <geom name="bl_hip_collision" type="mesh" mesh="bl_hip" class="collision"/>
         <geom name="bl_hip_visual" type="mesh" mesh="bl_hip" class="visual"/>
         <body name="bl_thigh" pos="0 0.036855 0">
@@ -108,7 +108,7 @@
       <body name="br_hip" pos="-0.05616 -0.02085 0">
         <!-- <inertial pos="-0.00967871 -0.025876 0.00551365" quat="0.557124 0.417006 -0.429526 0.575522" mass="0.0105904" diaginertia="4.59417e-06 4.13299e-06 1.28639e-06"/> -->
         <inertial pos="-0.009679 -0.025876 0.005514" mass="0.01059" diaginertia="4.133e-06 1.552e-06 4.328e-06"/>
-        <joint name="br_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.8 0.8" actuatorfrcrange="-0.45 0.45" class="motor"/>
+        <joint name="br_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.3 0.3" actuatorfrcrange="-0.45 0.45" class="motor"/>
         <geom name="br_hip_collision" type="mesh" mesh="br_hip" class="collision"/>
         <geom name="br_hip_visual" type="mesh" mesh="br_hip" class="visual"/>
         <body name="br_thigh" pos="-0.011685 -0.03686 0">
@@ -138,7 +138,7 @@
       <body name="fl_hip" pos="0.062526 0.020224 0">
         <!-- <inertial pos="0.00232573 0.025876 0.00551368" quat="0.417008 0.557126 -0.57552 0.429525" mass="0.0105904" diaginertia="4.59417e-06 4.13298e-06 1.28639e-06"/> -->
         <inertial pos="0.00232573 0.025876 0.00551368" mass="0.0105904" diaginertia="4.1334e-06 1.5517e-06 4.3284e-06"/>
-        <joint name="fl_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.8 0.8" actuatorfrcrange="-0.45 0.45" class="motor"/>
+        <joint name="fl_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.3 0.3" actuatorfrcrange="-0.45 0.45" class="motor"/>
         <geom name="fl_hip_collision" type="mesh" mesh="fl_hip" class="collision"/>
         <geom name="fl_hip_visual" type="mesh" mesh="fl_hip" class="visual"/>
         <body name="fl_thigh" pos="0.00031911 0.037482 0">
@@ -168,7 +168,7 @@
       <body name="fr_hip" pos="0.062526 -0.02085 0">
         <!-- <inertial pos="0.0023257 -0.025249 0.0055137" quat="0.557125 0.417005 -0.429525 0.575523" mass="0.01059" diaginertia="4.59415e-06 4.13295e-06 1.2864e-06"/> -->
         <inertial pos="0.0023257 -0.025249 0.0055137" mass="0.01059" diaginertia="4.1334e-06 1.5517e-06 4.3284e-06"/>
-        <joint name="fr_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.8 0.8" actuatorfrcrange="-0.45 0.45" class="motor"/>
+        <joint name="fr_hip_joint" type="hinge" pos="0 0 0" axis="1 0 0" range="-0.3 0.3" actuatorfrcrange="-0.45 0.45" class="motor"/>
         <geom name="fr_hip_collision" type="mesh" mesh="fr_hip" class="collision"/>
         <geom name="fr_hip_visual" type="mesh" mesh="fr_hip" class="visual"/>
         <body name="fr_thigh" pos="0.00031911 -0.03686 0">
