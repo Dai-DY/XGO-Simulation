@@ -1,5 +1,7 @@
 <mujoco model="xgourdf">
   <!-- 1. 添加default配置，区分motor、visual、collision类（与Lite3保持一致） -->
+  <option gravity="0 0 -9.81" 
+          timestep="0.005" />
   <default>
     <default class="robot">
       <default class="motor">
@@ -10,8 +12,7 @@
         <geom material="visualgeom" contype="0" conaffinity="0" group="2" /> <!-- 视觉几何：无碰撞，分组2 -->
       </default>
       <default class="collision">
-        <geom material="collision_material" condim="3" contype="0" conaffinity="1" group="1" solref="0.005 1" friction="1 0.01 0.01" /> <!-- 碰撞几何：有碰撞，分组1 -->
-        <equality solimp="0.99 0.999 1e-05" solref="0.005 1" />
+        <geom material="collision_material" condim="3" contype="0" conaffinity="1" group="1" solref="0.015 1.3" solimp="0.8 0.8 0.06" friction="0.85 0.01 0.01" /> <!-- 碰撞几何：有碰撞，分组1 -->
       </default>
     </default>
   </default>
@@ -95,8 +96,8 @@
             <geom name="bl_calf_visual" type="mesh" mesh="bl_calf" class="visual"/>
             <!-- 关键修改：将bl_foot从geom改为body节点 -->
             <body name="bl_foot" pos="0 0 -0.065864" quat="1 0 0 0">
-              <inertial pos="0 0 0" mass="0.00167992580343433" diaginertia="1e-08 1e-08 1e-08"/>
-              <!-- <inertial pos="-0.002152 0.000643 -0.002230" mass="0.00167992580343433" diaginertia="7.540e-08 3.805e-08 7.736e-08"/> -->
+              <!-- <inertial pos="0 0 0" mass="0.00167992580343433" diaginertia="1e-08 1e-08 1e-08"/> -->
+              <inertial pos="-0.002152 0.000643 -0.002230" mass="0.00167992580343433" diaginertia="7.540e-08 3.805e-08 7.736e-08"/>
               <geom name="bl_foot_collision" type="mesh" mesh="bl_foot" class="collision"/>
               <geom name="bl_foot_visual" type="mesh" mesh="bl_foot" class="visual"/>
             </body>
@@ -125,8 +126,8 @@
             <geom name="br_calf_visual" type="mesh" mesh="br_calf" class="visual"/>
             <!-- 关键修改：将br_foot从geom改为body节点 -->
             <body name="br_foot" pos="0 0 -0.065864" quat="1 0 0 0">
-              <inertial pos="0 0 0" mass="0.00167996390771006" diaginertia="1e-08 1e-08 1e-08"/>
-              <!-- <inertial pos="-0.002152 -0.000638 -0.002230" mass="0.00167996390771006" diaginertia="7.540e-08 3.805e-08 7.736e-08"/> -->
+              <!-- <inertial pos="0 0 0" mass="0.00167996390771006" diaginertia="1e-08 1e-08 1e-08"/> -->
+              <inertial pos="-0.002152 -0.000638 -0.002230" mass="0.00167996390771006" diaginertia="7.540e-08 3.805e-08 7.736e-08"/>
               <geom name="br_foot_collision" type="mesh" mesh="br_foot" class="collision"/>
               <geom name="br_foot_visual" type="mesh" mesh="br_foot" class="visual"/>
             </body>
@@ -155,8 +156,8 @@
             <geom name="fl_calf_visual" type="mesh" mesh="fl_calf" class="visual"/>
             <!-- 关键修改：将fl_foot从geom改为body节点 -->
             <body name="fl_foot" pos="-0.00030458 0 -0.065887" quat="1 0 0 0">
-              <inertial pos="0 0 0" mass="0.00167992580204063" diaginertia="1e-08 1e-08 1e-08"/> 给foot添加微小惯性（避免MuJoCo警告）
-              <!-- <inertial pos="-0.002162 0.000019 -0.002212" mass="0.00167992580204063" diaginertia="7.553e-08 3.805e-08 7.723e-08"/> -->
+              <!-- <inertial pos="0 0 0" mass="0.00167992580204063" diaginertia="1e-08 1e-08 1e-08"/> -->
+              <inertial pos="-0.002162 0.000019 -0.002212" mass="0.00167992580204063" diaginertia="7.553e-08 3.805e-08 7.723e-08"/>
               <geom name="fl_foot_collision" type="mesh" mesh="fl_foot" class="collision"/>
               <geom name="fl_foot_visual" type="mesh" mesh="fl_foot" class="visual"/>
             </body>
@@ -185,8 +186,8 @@
             <geom name="fr_calf_visual" type="mesh" mesh="fr_calf" class="visual"/>
             <!-- 关键修改：将fr_foot从geom改为body节点 -->
             <body name="fr_foot" pos="0 0 -0.065878" quat="1 0 0 0">
-              <inertial pos="0 0 0" mass="0.00168" diaginertia="1e-08 1e-08 1e-08"/>
-              <!-- <inertial pos="-0.002467 -0.000014 -0.002220" mass="0.00168" diaginertia="7.553e-08 3.806e-08 7.723e-08"/> -->
+              <!-- <inertial pos="0 0 0" mass="0.00168" diaginertia="1e-08 1e-08 1e-08"/> -->
+              <inertial pos="-0.002467 -0.000014 -0.002220" mass="0.00168" diaginertia="7.553e-08 3.806e-08 7.723e-08"/>
               <geom name="fr_foot_collision" type="mesh" mesh="fr_foot" class="collision"/>
               <geom name="fr_foot_visual" type="mesh" mesh="fr_foot" class="visual"/>
             </body>

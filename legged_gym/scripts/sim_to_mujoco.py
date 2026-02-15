@@ -57,25 +57,10 @@ if __name__ == "__main__":
         num_obs = config["num_obs"]
 
         hip_reduction = config["hip_reduction"]
+
+        init_base_height = config["init_base_height"]
         
         cmd = np.array(config["cmd_init"], dtype=np.float32)
-
-        # Isaac Gym Order: BL, BR, FL, FR
-        # MuJoCo Order: FR, FL, BR, BL
-        
-        # Map MuJoCo (FR, FL, BR, BL) -> Isaac (BL, BR, FL, FR)
-        # FR (0,1,2) -> Isaac FR (9,10,11)
-        # FL (3,4,5) -> Isaac FL (6,7,8)
-        # BR (6,7,8) -> Isaac BR (3,4,5)
-        # BL (9,10,11) -> Isaac BL (0,1,2)
-        mujoco_2_isaac_idx = [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
-        
-        # Map Isaac (BL, BR, FL, FR) -> MuJoCo (FR, FL, BR, BL)
-        # BL (0,1,2) -> MuJoCo BL (9,10,11)
-        # BR (3,4,5) -> MuJoCo BR (6,7,8)
-        # FL (6,7,8) -> MuJoCo FL (3,4,5)
-        # FR (9,10,11) -> MuJoCo FR (0,1,2)
-        isaac_2_mujoco_idx = [9, 10, 11, 6, 7, 8, 3, 4, 5, 0, 1, 2]
 
     # define context variables
     action = np.zeros(num_actions, dtype=np.float32)
@@ -88,30 +73,36 @@ if __name__ == "__main__":
     m = mujoco.MjModel.from_xml_path(xml_path)
 
     # 遍历所有执行器
-    print("执行器顺序及其控制的关节：")
-    for actuator_id in range(m.nu):
-        # 获取执行器名称
-        actuator_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_ACTUATOR, actuator_id)
+    # print("执行器顺序及其控制的关节：")
+    # for actuator_id in range(m.nu):
+    #     # 获取执行器名称
+    #     actuator_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_ACTUATOR, actuator_id)
         
-        # 获取执行器类型和关联的关节ID
-        trn_type = m.actuator_trntype[actuator_id]
-        trn_id = m.actuator_trnid[actuator_id, 0]  # 假设第一个目标为关节
+    #     # 获取执行器类型和关联的关节ID
+    #     trn_type = m.actuator_trntype[actuator_id]
+    #     trn_id = m.actuator_trnid[actuator_id, 0]  # 假设第一个目标为关节
         
-        # 检查是否为关节型执行器
-        if trn_type == mjtTrn.mjTRN_JOINT:
-            joint_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_JOINT, trn_id)
-        else:
-            joint_name = "N/A (非关节执行器)"
+    #     # 检查是否为关节型执行器
+    #     if trn_type == mjtTrn.mjTRN_JOINT:
+    #         joint_name = mujoco.mj_id2name(m, mjtObj.mjOBJ_JOINT, trn_id)
+    #     else:
+    #         joint_name = "N/A (非关节执行器)"
         
-        # 输出信息
-        print(f"执行器索引 {actuator_id} - 名称: {actuator_name}")
-        print(f"    控制关节: {joint_name} (关节索引: {trn_id})")
-        print("-----------------------------------------")
+    #     # 输出信息
+    #     print(f"执行器索引 {actuator_id} - 名称: {actuator_name}")
+    #     print(f"    控制关节: {joint_name} (关节索引: {trn_id})")
+    #     print("-----------------------------------------")
 
 
     d = mujoco.MjData(m)
-    d.qpos[2] = 0.14 # Set initial height to 0.15m
+    # Init
+    d.qpos[2] = init_base_height
+    d.qpos[3:7] = [1.0, 0.0, 0.0, 0.0] 
+    d.qpos[7:] = default_angles
     m.opt.timestep = simulation_dt
+
+    # Forward Compute
+    mujoco.mj_forward(m, d)
 
     # load policy
     policy = torch.jit.load(policy_path)
@@ -121,7 +112,7 @@ if __name__ == "__main__":
         start = time.time()
         while viewer.is_running() and time.time() - start < simulation_duration:
             step_start = time.time()
-            tau = pd_control(target_dof_pos, d.qpos[7:], kps, d.qvel[6:], kds)
+            tau = np.clip(pd_control(target_dof_pos, d.qpos[7:], kps, d.qvel[6:], kds), -0.45, 0.45)
             d.ctrl[:] = tau
             # mj_step can be replaced with code that also evaluates
             # a policy and applies a control signal before stepping the physics.
@@ -146,26 +137,27 @@ if __name__ == "__main__":
                 obs[:3] = omega
                 obs[3:6] = gravity_orientation
                 obs[6:9] = cmd * cmd_scale
-                obs[9 : 9 + num_actions] = qj[mujoco_2_isaac_idx]
-                obs[9 + num_actions : 9 + 2 * num_actions] = dqj[mujoco_2_isaac_idx]
+                obs[9 : 9 + num_actions] = qj
+                obs[9 + num_actions : 9 + 2 * num_actions] = dqj
                 obs[9 + 2 * num_actions : 9 + 3 * num_actions] = action
 
-                if log_on and counter % log_interval == 0:
-                    names = ["Omega", "Grav", "Cmd", "DofPos", "DofVel", "LastAct"]
-                    starts = [0, 3, 6, 9, 21, 33]
-                    ends = [3, 6, 9, 21, 33, 45]
-                    print(f"\n=== Step {counter} Observation Debug (Isaac Frame) ===")
-                    for name, s, e in zip(names, starts, ends):
-                        print(f"{name:<8}: {obs[s:e]}")
-                    # print(f"tau output: {tau}")
-                    # print(d.qpos[7:])
+                # Print obs debug information
+                if log_on and counter % (log_interval * control_decimation) == 0:
+                    print(f"\n=== Step {counter} Observation Debug Mujoco Order ======")
+                    print(f"{'Omega':15}: {omega}")
+                    print(f"{'Omega':15}: [{' '.join(f'{x:6.4f}' for x in omega)}]")
+                    print(f"{'Grav':15}: [{' '.join(f'{x:6.4f}' for x in gravity_orientation)}]")
+                    print(f"{'Vel':15}: [{' '.join(f'{x:6.4f}' for x in d.qvel[6:])}]")
+                    print(f"{'Pos':15}: [{' '.join(f'{x:6.4f}' for x in d.qpos[7:])}]")
+                    print(f"{'Pos_cmd':15}: [{' '.join(f'{x:6.4f}' for x in target_dof_pos)}]")  
+                    print(f"{'Pos_err':15}: [{' '.join(f'{x:6.4f}' for x in target_dof_pos-d.qpos[7:])}]")  
+                    print(f"{'Torque_output':15}: [{' '.join(f'{x:6.4f}' for x in tau)}]") 
                     print("====================================================")
-
                 # Policy inference
                 obs_tensor = torch.from_numpy(obs).unsqueeze(0)
                 action = policy(obs_tensor).detach().numpy().squeeze()
                 action[[0, 3, 6, 9]] *= hip_reduction
-                target_dof_pos = action[isaac_2_mujoco_idx] * action_scale + default_angles
+                target_dof_pos = action * action_scale + default_angles
 
             # Pick up changes to the physics state, apply perturbations, update options from GUI.
             viewer.sync()
