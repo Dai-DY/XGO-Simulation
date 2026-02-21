@@ -10,7 +10,7 @@ simulation_dt: 0.005
 # Controller update frequency (meets the requirement of simulation_dt * controll_decimation=0.02; 50Hz)
 control_decimation: 4
 
-log_on: True
+log_on: False
 log_interval: 5
 
 kps: 0.5
