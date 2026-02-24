@@ -58,7 +58,7 @@ class sdogCfg( LeggedRobotCfg ):
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         measure_heights = True
         curriculum = True
-        terrain_proportions = [0.0, 0.3, 0.2, 0.2, 0.3, 0.0] # # [flat ground, undulating ground, downstairs, upstairs, blocky terrain, scattered obstacles]
+        terrain_proportions = [0.1, 0.3, 0.2, 0.2, 0.2, 0.0] # # [flat ground, undulating ground, downstairs, upstairs, blocky terrain, scattered obstacles]
         static_friction = 1.0
         dynamic_friction = 1.0
         restitution = 0.0
@@ -82,7 +82,7 @@ class sdogCfg( LeggedRobotCfg ):
         name = "sdog"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
-        terminate_after_contacts_on = ["base", "hip", "body", "calf"]
+        terminate_after_contacts_on = ["base", "hip", "body"]
         self_collisions = 1 # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
     class domain_rand( LeggedRobotCfg.domain_rand ):
@@ -109,17 +109,17 @@ class sdogCfg( LeggedRobotCfg ):
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
             feet_air_time = 1.5
-            feet_gait = 0.3
+            feet_gait = 0.1
             # penalty scales
             stand_still = -0.2
             torques = -2.5e-1
-            dof_pos_limits = -10.0
+            dof_pos_limits = -3.0
             action_rate = -0.12
             dof_acc = -2.5e-7
             orientation = -3.0
-            lin_vel_z = -0.5
+            # lin_vel_z = -0.5
             # feet_air_time_variance = -18.0
-            foot_clearance = -0.2
+            foot_clearance = -2.0
             joint_mirror = -5.0
 
 

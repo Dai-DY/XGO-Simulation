@@ -1,7 +1,7 @@
 # Config for sdog
 # policy_path: "logs/sdog/exported/policies/retrain_2450.pt"
 policy_path: "logs/sdog/exported/policies/high_base_slow_pace_002.pt"
-xml_path: "resources/robots/sdog/xml/sdog_copy.xml"
+xml_path: "resources/robots/sdog/xml/sdog_terrain.xml"
 
 # Total simulation time
 simulation_duration: 600.0
