@@ -20,10 +20,10 @@ class sdog(LeggedRobot):
                                     self.dof_vel * self.obs_scales.dof_vel,
                                     self.actions
                                     ),dim=-1)
-        # add perceptive inputs if not blind
-        if self.cfg.terrain.measure_heights:
-            heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+        # add perceptive inputs if not blind we need measured height but not put into the obs
+        # if self.cfg.terrain.measure_heights:
+        #     heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
+        #     self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
         # add noise if needed
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
@@ -138,7 +138,7 @@ class sdog(LeggedRobot):
         
     def _reward_foot_clearance(self):
         # Reward foot height during swing phase
-        target_height = -0.02
+        target_height = -0.06
         tanh_mult = 2.0
 
         # Get foot positions and velocities in world frame
