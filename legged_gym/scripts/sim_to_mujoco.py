@@ -149,6 +149,14 @@ class MujocoSim:
 
     def run(self):
         with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
+            # Set camera to track the robot's base body
+            body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "BODY")
+            if body_id != -1:
+                viewer.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+                viewer.cam.trackbodyid = body_id
+                viewer.cam.distance = 1.5      # Distance from the robot
+                viewer.cam.elevation = -20     # Camera angle (pitch)
+                viewer.cam.azimuth = 90        # Camera angle (yaw)
             # Close the viewer automatically after simulation_duration wall-seconds.
             start = time.time()
             while viewer.is_running() and time.time() - start < self.cfg.simulation_duration:

@@ -31,9 +31,11 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 class sdogCfg( LeggedRobotCfg ):
+    class sim( LeggedRobotCfg.sim ):
+        dt = 0.002
     class env( LeggedRobotCfg.env ):
         num_envs = 4096
-        num_observations = 45
+        num_observations = 45        
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.15] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
@@ -63,7 +65,7 @@ class sdogCfg( LeggedRobotCfg ):
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4
+        decimation = 10
     class commands( LeggedRobotCfg.commands ):
         class ranges:
             lin_vel_x = [-0.2, 0.2] # min max [m/s]
