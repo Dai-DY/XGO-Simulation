@@ -112,13 +112,13 @@ class Terrain:
                                 length=self.width_per_env_pixels,
                                 vertical_scale=self.cfg.vertical_scale,
                                 horizontal_scale=self.cfg.horizontal_scale)
-        slope = difficulty * 0.4
-        step_height = 0.05 + 0.18 * difficulty
-        discrete_obstacles_height = 0.05 + difficulty * 0.2
-        stepping_stones_size = 1.5 * (1.05 - difficulty)
-        stone_distance = 0.05 if difficulty==0 else 0.1
-        gap_size = 1. * difficulty
-        pit_depth = 1. * difficulty
+        slope = 0.2 * difficulty
+        step_height = 0.01 + 0.04 * difficulty
+        discrete_obstacles_height = 0.01 + difficulty * 0.04
+        stepping_stones_size = 0.5 * (1.05 - difficulty)
+        stone_distance = 0.02 if difficulty==0 else 0.1
+        gap_size = 0.3 * difficulty
+        pit_depth = 0.3 * difficulty
         if choice < self.proportions[0]:
             if choice < self.proportions[0]/ 2:
                 slope *= -1

@@ -53,8 +53,13 @@ class sdogCfg( LeggedRobotCfg ):
             'br_calf_joint': -1.5,    # [rad]
         }
     class terrain( LeggedRobotCfg.terrain ):
-        mesh_type = 'plane' # "heightfield" # none, plane, heightfield or trimesh
+        mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         measure_heights = False
+        curriculum = True
+        terrain_proportions = [0.0, 0.3, 0.2, 0.2, 0.3, 0.0] # # [flat ground, undulating ground, downstairs, upstairs, blocky terrain, scattered obstacles]
+        static_friction = 1.0
+        dynamic_friction = 1.0
+        restitution = 0.0
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
@@ -111,6 +116,7 @@ class sdogCfg( LeggedRobotCfg ):
             dof_acc = -2.5e-7
             orientation = -3.0
             lin_vel_z = -0.5
+            base_height = 0.0
             # feet_air_time_variance = -18.0
             foot_clearance = -0.2
             joint_mirror = -5.0

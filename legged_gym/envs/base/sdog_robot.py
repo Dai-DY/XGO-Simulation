@@ -138,7 +138,7 @@ class sdog(LeggedRobot):
         
     def _reward_foot_clearance(self):
         # Reward foot height during swing phase
-        target_height = -0.06
+        target_height = -0.02
         tanh_mult = 2.0
 
         # Get foot positions and velocities in world frame
