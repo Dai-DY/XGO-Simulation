@@ -1,14 +1,14 @@
 # Config for sdog
 # policy_path: "logs/sdog/exported/policies/retrain_2450.pt"
-policy_path: "logs/sdog/exported/policies/high_base_slow_pace.pt"
+policy_path: "logs/sdog/exported/policies/high_base_slow_pace_002.pt"
 xml_path: "resources/robots/sdog/xml/sdog_copy.xml"
 
 # Total simulation time
 simulation_duration: 600.0
 # Simulation time step
-simulation_dt: 0.005
+simulation_dt: 0.002
 # Controller update frequency (meets the requirement of simulation_dt * controll_decimation=0.02; 50Hz)
-control_decimation: 4
+control_decimation: 10
 
 log_on: False
 log_interval: 5
