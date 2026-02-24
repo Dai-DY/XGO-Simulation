@@ -16,6 +16,8 @@ log_interval: 5
 kps: 0.5
 kds: 0.005
 
+kp_yaw: 1.5
+
 default_angles: [ 0.1000, 0.6000, -1.5000, # BL_hip_joint, BL_thigh_joint, BL_calf_joint
                   -0.1000, 0.6000, -1.5000, # BR_hip_joint, BR_thigh_joint, BR_calf_joint
                   0.1000, 0.6000, -1.5000, # FL_hip_joint, FL_thigh_joint, FL_calf_joint
