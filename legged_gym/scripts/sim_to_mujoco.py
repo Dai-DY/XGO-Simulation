@@ -27,6 +27,8 @@ class MujocoSim:
             self.kps = np.full(12, config["kps"], dtype=np.float32)
             self.kds = np.full(12, config["kds"], dtype=np.float32)
 
+            self.kp_yaw = config["kp_yaw"]
+
             self.default_angles = np.array(config["default_angles"], dtype=np.float32)
 
             self.ang_vel_scale = config["ang_vel_scale"]
@@ -65,12 +67,25 @@ class MujocoSim:
         self.data.qpos[3:7] = [1.0, 0.0, 0.0, 0.0] 
         self.data.qpos[7:] = self.cfg.default_angles
         self.model.opt.timestep = self.cfg.simulation_dt
+        self.target_yaw = self.get_yaw_from_quaternion(self.data.qpos[3:7])
 
         # Forward Compute
         mujoco.mj_forward(self.model, self.data)
 
     def load_policy(self):
         self.policy = torch.jit.load(self.cfg.policy_path)
+
+    @staticmethod
+    def get_yaw_from_quaternion(quaternion):
+        qw = quaternion[0]
+        qx = quaternion[1]
+        qy = quaternion[2]
+        qz = quaternion[3]
+        
+        siny_cosp = 2 * (qw * qz + qx * qy)
+        cosy_cosp = 1 - 2 * (qy * qy + qz * qz)
+        yaw = np.arctan2(siny_cosp, cosy_cosp)
+        return yaw
 
     @staticmethod
     def get_gravity_orientation(quaternion):
@@ -119,6 +134,13 @@ class MujocoSim:
         dqj = dqj * self.cfg.dof_vel_scale
         gravity_orientation = self.get_gravity_orientation(quat)
         omega = omega * self.cfg.ang_vel_scale
+
+        # Heading control using IMU (quaternion)
+        current_yaw = self.get_yaw_from_quaternion(quat)
+        yaw_error = self.target_yaw - current_yaw
+        yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
+        kp_yaw = self.cfg.kp_yaw
+        self.cfg.cmd[2] = np.clip(kp_yaw * yaw_error, -1.0, 1.0)
         
         # Construct the observation in the order expected by the policy: 
         # [omega, gravity_orientation, cmd, qj, dqj, last_action]
