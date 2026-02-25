@@ -263,7 +263,12 @@ def play(args):
             if i % plot_refresh_rate == 0:
                 base_lin = env.base_lin_vel[robot_index, :].detach().cpu().numpy()
                 roll, pitch, yaw = get_euler_xyz(env.base_quat[robot_index:robot_index+1, :])
-                base_height = env.root_states[robot_index, 2].item()
+                
+                if hasattr(env, 'measured_heights') and isinstance(env.measured_heights, torch.Tensor):
+                    terrain_height = torch.mean(env.measured_heights[robot_index]).item()
+                else:
+                    terrain_height = 0.0
+                base_height = env.root_states[robot_index, 2].item() - terrain_height
                 
                 # Send data to plotter
                 # t, vx, vy, cx, cy, roll, pitch, yaw, height

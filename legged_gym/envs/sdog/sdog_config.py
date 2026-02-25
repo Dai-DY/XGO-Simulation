@@ -58,10 +58,11 @@ class sdogCfg( LeggedRobotCfg ):
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         measure_heights = True
         curriculum = True
-        terrain_proportions = [0.1, 0.3, 0.2, 0.2, 0.2, 0.0] # # [flat ground, undulating ground, downstairs, upstairs, blocky terrain, scattered obstacles]
+        terrain_proportions = [0.2, 0.2, 0.3, 0.3, 0.0, 0.0] # # [flat ground, undulating ground, downstairs, upstairs, blocky terrain, scattered obstacles]
         static_friction = 1.0
         dynamic_friction = 1.0
         restitution = 0.0
+        slope_treshold = 0.1
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
@@ -82,7 +83,7 @@ class sdogCfg( LeggedRobotCfg ):
         name = "sdog"
         foot_name = "foot"
         penalize_contacts_on = ["thigh", "calf"]
-        terminate_after_contacts_on = ["base", "hip", "body"]
+        terminate_after_contacts_on = ["base", "body"]
         self_collisions = 1 # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
     class domain_rand( LeggedRobotCfg.domain_rand ):
@@ -101,25 +102,26 @@ class sdogCfg( LeggedRobotCfg ):
             dof_vel = 0.1
             height_measurements = 5.0
     class rewards( LeggedRobotCfg.rewards ):
-        soft_dof_pos_limit = 0.8
+        soft_dof_pos_limit = 0.9
         base_height_target = 0.18
         tracking_sigma = 0.03
         class scales( LeggedRobotCfg.rewards.scales ):
             # reward scales
             tracking_lin_vel = 2.5
             tracking_ang_vel = 1
-            feet_air_time = 1.5
+            feet_air_time = 5.0
             feet_gait = 0.1
             # penalty scales
-            stand_still = -0.2
-            torques = -2.5e-1
-            dof_pos_limits = -3.0
+            # stand_still = -0.2
+            torques = -2.5e-2
+            dof_pos_limits = -10.0
             action_rate = -0.12
             dof_acc = -2.5e-7
             orientation = -3.0
-            # lin_vel_z = -0.5
+            lin_vel_z = 0.0
             # feet_air_time_variance = -18.0
-            foot_clearance = -2.0
+            foot_clearance = -0.2
+            stumble = -2.0
             joint_mirror = -5.0
 
 
